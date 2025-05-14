@@ -3,19 +3,21 @@ import styles from '../styles/HighlightedTextArea.module.scss';
 
 interface Token {
     text: string;
-    type: 'logical-operator' | 'key' | 'value' | 'bracket' | 'whitespace' | 'error' | 'unknown';
+    type: 'logical-operator' | 'logical-prefix' | 'key' | 'value' | 'bracket' | 'whitespace' | 'error' | 'unknown';
+
 }
 
-// Цвета для разных типов токенов
 const tokenColors: Record<Token['type'], string> = {
     'unknown': '#00000080',
     'logical-operator': '#9c27b0',
+    'logical-prefix': '#9c27b0',
     'key': '#2196f3',
     'value': '#4caf50',
     'bracket': 'transparent',
     'whitespace': 'inherit',
     'error': 'inherit'
 };
+
 
 const HighlightedTextarea: React.FC = () => {
     const [content, setContent] = useState<string>('');
@@ -52,20 +54,37 @@ const HighlightedTextarea: React.FC = () => {
                 if (firstType === null) firstType = 'Type2';
                 afterKey = true;
             } else if (match[2]) {
-                type = 'value';
+                // Кастомная валидация кавычек
+                const quoteType = tokenText[0];
+                const content = tokenText.slice(1, -1);
+
+                const isValid = (() => {
+                    if (tokenText[tokenText.length - 1] !== quoteType) return false;
+
+                    const re = new RegExp(`(?<!\\\\)${quoteType}`, 'g');
+                    return !re.test(content);
+                })();
+
+                type = isValid ? 'value' : 'error';
+
                 if (expressionType === null) {
                     expressionType = 'Type1';
                     if (firstType === null) firstType = 'Type1';
                 }
                 if (firstType === 'Type2' && !afterKey) type = 'error';
                 else if (firstType === 'Type1' && afterKey) type = 'error';
+
                 afterKey = false;
             } else if (match[3]) {
                 type = 'bracket';
                 bracketCount += tokenText === '(' ? 1 : -1;
                 if (bracketCount < 0) type = 'error';
             } else if (match[4]) {
-                type = 'logical-operator';
+                if (match[4] === 'NOT') {
+                    type = 'logical-prefix';
+                } else {
+                    type = 'logical-operator';
+                }
                 afterKey = false;
             } else if (match[5]) {
                 type = 'whitespace';
@@ -74,10 +93,45 @@ const HighlightedTextarea: React.FC = () => {
 
             tokens.push({ text: tokenText, type });
 
+            // Логическая проверка для logical-operator
+            if (type === 'logical-operator') {
+                // Ищем последний значимый токен перед этим
+                let j = tokens.length - 2;
+                while (j >= 0 && tokens[j].type === 'whitespace') {
+                    j--;
+                }
+
+                const prevToken = tokens[j];
+
+                if (!prevToken || !['value', 'key', 'bracket'].includes(prevToken.type)) {
+                    tokens[tokens.length - 1].type = 'error';
+                }
+
+                const remainingText = text.slice(regex.lastIndex);
+                const lookaheadMatch = /\S/.exec(remainingText);
+
+                if (!lookaheadMatch) {
+                    tokens[tokens.length - 1].type = 'error';
+                }
+            }
+
+            if (type === 'logical-prefix') {
+                // Проверка: предыдущий значимый токен не должен быть value/key
+                let j = tokens.length - 2;
+                while (j >= 0 && tokens[j].type === 'whitespace') {
+                    j--;
+                }
+
+                const prevToken = tokens[j];
+                if (prevToken && ['value', 'key'].includes(prevToken.type)) {
+                    tokens[tokens.length - 1].type = 'error';
+                }
+            }
+
             if (type === 'value') {
                 if (
                     lastBlockIndex !== null &&
-                    !tokens.slice(lastBlockIndex).some(t => t.type === 'logical-operator')
+                    !tokens.slice(lastBlockIndex).some(t => ['logical-operator', 'logical-prefix', 'error'].includes(t.type))
                 ) {
                     tokens[lastBlockIndex].type = 'error';
                 }
@@ -100,8 +154,6 @@ const HighlightedTextarea: React.FC = () => {
 
         return tokens;
     };
-
-
 
     const tokens = useMemo(() => tokenize(content), [content]);
     console.log(tokens);
