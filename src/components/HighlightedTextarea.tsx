@@ -2,13 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import styles from '../styles/HighlightedTextArea.module.scss';
 
 import { Input } from 'antd';
+import type { ExpressionType, Token } from '../types/types';
 const { TextArea } = Input;
-
-interface Token {
-    text: string;
-    type: 'logical-operator' | 'logical-prefix' | 'key' | 'value' | 'bracket' | 'whitespace' | 'error' | 'unknown';
-
-}
 
 const tokenColors: Record<Token['type'], string> = {
     'unknown': '#00000080',
@@ -32,7 +27,7 @@ const HighlightedTextarea: React.FC = () => {
         const tokens: Token[] = [];
         let match: RegExpExecArray | null;
         let lastIndex = 0;
-        let expressionType: 'Type1' | 'Type2' | 'Mixed' | null = null;
+        let expressionType: ExpressionType = null;
         let firstType: 'Type1' | 'Type2' | null = null;
         let bracketCount = 0;
         let lastBlockIndex: number | null = null;
