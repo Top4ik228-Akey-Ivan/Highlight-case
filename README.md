@@ -1,54 +1,49 @@
-# React + TypeScript + Vite
+# Highlighted Logical Expression Textarea
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Интерактивный компонент `Textarea` с синтаксической подсветкой логических выражений. Подсветка реализована с учётом структуры выражений, валидности скобок, ключей, значений, а также логических операторов (`AND`, `OR`, `NOT`).
 
-Currently, two official plugins are available:
+## 🚀 Возможности
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Поддержка логических выражений двух типов:
+  - **Type1**: `value1 AND NOT value2`
+  - **Type2**: `key1=value1 AND key2=value2`
+- Подсветка синтаксических элементов с помощью цветов и стилей:
+  - `key`: синий
+  - `value`: зелёный
+  - `logical-operator` / `logical-prefix`: фиолетовый
+  - `error`: подчёркнуто волнистой красной линией
+- Обработка синтаксических ошибок (например, несбалансированных скобок или неправильного порядка элементов)
+- Использование `antd TextArea` с наложенным фоном (`highlight`) для отображения подсветки
+- Поддержка динамической обработки ввода пользователя
 
-## Expanding the ESLint configuration
+## 🛠️ Используемые технологии
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React + TypeScript** — компонентная архитектура и строгая типизация
+- **Ant Design (`antd`)** — библиотека UI-компонентов
+- **SCSS-модули** — стилизация с полной изоляцией классов
+- **RegExp** — токенизация логических выражений
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## 📊 Как работает алгоритм
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Алгоритм состоит из следующих ключевых этапов:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 1. Токенизация
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+Алгоритм разбивает входной текст на **токены** с помощью регулярного выражения. Токены могут быть различных типов:
+
+- **Ключи**
+- **Значения**
+- **Логические операторы**
+- **Скобки**
+- **Пробелы**
+- **Ошибки**
+
+### 2. Подсветка синтаксиса
+
+После токенизации происходит генерация HTML-разметки, где каждому токену присваивается определённый стиль, основанный на его типе. Это позволяет выделить токены в разных цветах в зависимости от их типа:
+
+- **Ключи** — синие
+- **Значения** — зелёные
+- **Логические операторы и префиксы** — фиолетовые
+- **Скобки** — прозрачные (для визуального разделения блоков)
+- **Ошибки** — подчеркнутые красным
