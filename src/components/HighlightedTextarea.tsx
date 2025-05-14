@@ -106,7 +106,7 @@ const HighlightedTextarea: React.FC = () => {
                 while (j >= 0 && tokens[j].type === 'whitespace') j--;
 
                 const prevToken = tokens[j];
-                if (!prevToken || !['value', 'key', 'bracket'].includes(prevToken.type)) {
+                if (!prevToken || !['value', 'bracket'].includes(prevToken.type)) {
                     tokens[tokens.length - 1].type = 'error';
                 }
 
@@ -117,16 +117,18 @@ const HighlightedTextarea: React.FC = () => {
                 }
             }
 
+            // Проверка логических префиксов (NOT)
             if (type === 'logical-prefix') {
                 let j = tokens.length - 2;
                 while (j >= 0 && tokens[j].type === 'whitespace') j--;
 
                 const prevToken = tokens[j];
-                if (prevToken && ['value', 'key'].includes(prevToken.type)) {
+                if (prevToken && ['value', 'key', 'bracket'].includes(prevToken.type)) {
                     tokens[tokens.length - 1].type = 'error';
                 }
             }
 
+            // Проверка значения после ключа
             if (type === 'value') {
                 if (
                     lastBlockIndex !== null &&
@@ -144,6 +146,7 @@ const HighlightedTextarea: React.FC = () => {
             tokens.push({ text: text.slice(lastIndex), type: 'unknown' });
         }
 
+        // Проверка сбалансированности скобок
         if (bracketCount !== 0) {
             tokens.forEach(token => {
                 if (token.type === 'bracket') token.type = 'error';
