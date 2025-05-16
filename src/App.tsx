@@ -1,10 +1,11 @@
 import './App.css';
+import { HighlightedTextarea } from './components/HighlightedTextarea';
 
 function App() {
 
   return (
     <>
-      Решение находятся в ветках: manual-case И regexp-case
+      <HighlightedTextarea />
     </>
   )
 }
