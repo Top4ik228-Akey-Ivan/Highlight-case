@@ -212,7 +212,8 @@ export function parse(input: string): ExpressionNode {
                     start: left.start,
                     end: right.end,
                 };
-            } else if (
+            }
+            else if (
                 nextToken.type === 'KEY' ||
                 nextToken.type === 'VALUE' ||
                 nextToken.type === 'LPAREN'
@@ -225,7 +226,8 @@ export function parse(input: string): ExpressionNode {
                     left: left,
                     right: right
                 })
-            } else {
+            }
+            else {
                 break;
             }
         }
@@ -326,13 +328,14 @@ export function parse(input: string): ExpressionNode {
             }
         }
 
-        return errorNode({
-            message: `Unexpected token: ${token.value}`,
+        return {
+            type: 'Error',
+            message: 'unexpected',
             start: token.start,
             end: token.end
-        });
+        };
+
     }
 
     return parseExpression();
 }
-
