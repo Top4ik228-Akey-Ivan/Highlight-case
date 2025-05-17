@@ -1,0 +1,68 @@
+.container {
+    position: relative;
+    width: 800px;
+    margin: 100px auto;
+    font-size: 20px;
+    line-height: 1.4;
+    font-family: monospace;
+
+    .highlight,
+    .textarea {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow: auto;
+
+        width: 100%;
+        min-height: 200px;
+
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+
+        font-size: inherit;
+        line-height: inherit;
+        font-family: inherit;
+    }
+
+    .highlight {
+        color: inherit;
+        background: white;
+        pointer-events: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+
+
+        .key {
+            color: #007bff;
+        }
+
+        .value {
+            color: #28a745;
+        }
+
+        .operator {
+            color: #6f42c1;
+            font-weight: bold;
+        }
+
+        .error {
+            text-decoration: red wavy underline;
+        }
+    }
+
+    .textarea {
+        color: transparent;
+        caret-color: black;
+        background: transparent;
+        z-index: 2;
+        position: relative;
+
+
+        &:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+    }
+}

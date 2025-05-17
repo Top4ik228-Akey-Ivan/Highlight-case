@@ -1,54 +1,36 @@
-# React + TypeScript + Vite
+# Logical Expression Parser
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Этот парсер предназначен для обработки логических выражений, поддерживающих операторы `AND`, `OR`, `NOT`, группировку скобками, а также условия с ключами (`KEY=VALUE`) и без ключей (`VALUE`).
 
-Currently, two official plugins are available:
+## 🔧 Основной принцип работы
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Алгоритм парсинга реализован в виде рекурсивного спуска. Он последовательно обрабатывает выражение в порядке приоритетов:
 
-## Expanding the ESLint configuration
+1. **OR** — самый низкий приоритет
+2. **AND** — средний приоритет 
+3. **NOT**  — самый высокий приоритет
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Все токены предварительно извлекаются функцией `tokenize`, после чего парсер строит AST (Abstract Syntax Tree), представляющее выражение.
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## ✅ Что парсер умеет
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- Распознаёт и правильно обрабатывает:
+  - Логические операторы: `AND`, `OR`, `NOT`
+  - Скобки: `(...)`
+  - Условия: `KEY=VALUE` и одиночные `VALUE`
+- Проверяет правильность структуры выражения:
+  - Обнаруживает отсутствие закрывающей скобки
+  - Проверяет порядок операторов
+  - Запрещает смешивание условий с ключами и без ключей
+- Генерирует `ErrorNode` с указанием позиции ошибки
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 📁 Структура AST
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+Парсер возвращает объекты следующих типов:
+
+- `LogicalExpression` — логическая операция (`AND`, `OR`)
+- `NotExpression` — унарная операция `NOT`
+- `Group` — выражение в скобках
+- `Condition` — простое условие
+- `Error` — ошибка с сообщением и позициями
+
