@@ -23,7 +23,7 @@ const HighlightedTextarea: React.FC = () => {
 
     // Разбить строку на токены
     const tokenize = (text: string): Token[] => {
-        const regex = /([A-Za-z0-9_]+=)|("(?:\\"|[^"])*"|'(?:\\'|[^'])*')|(AND|OR|NOT)|([A-Za-z0-9_]+)|(\(|\))|(\s+)/g;
+        const regex = /([A-Za-z0-9_]+=)|("(?:\\"|[^"])*"|'(?:\\'|[^'])*')|(AND|OR|NOT|and|or|not)|([A-Za-z0-9_]+)|(\(|\))|(\s+)/g;
         const tokens: Token[] = [];
         let match: RegExpExecArray | null;
         let lastIndex = 0;
@@ -71,7 +71,7 @@ const HighlightedTextarea: React.FC = () => {
                 afterKey = false;
             } else if (match[3]) {
                 // AND / OR / NOT
-                if (match[3] === 'NOT') {
+                if (match[3].toUpperCase() === 'NOT') {
                     type = 'logical-prefix';
                 } else {
                     type = 'logical-operator';
@@ -132,7 +132,8 @@ const HighlightedTextarea: React.FC = () => {
             if (type === 'value') {
                 if (
                     lastBlockIndex !== null &&
-                    !tokens.slice(lastBlockIndex).some(t => ['logical-operator', 'logical-prefix', 'error'].includes(t.type))
+                    !tokens.slice(lastBlockIndex)
+                    .some(t => ['logical-operator', 'logical-prefix', 'error'].includes(t.type))
                 ) {
                     tokens[lastBlockIndex].type = 'error';
                 }
