@@ -65,8 +65,9 @@ export function parse(input: string): ExpressionNode {
         left?: ExpressionNode;
         right?: ExpressionNode;
         operator?: LogicalOperator;
+        expression?: ExpressionNode;
     }): ErrorNode {
-        const { message, start, end, left, right, operator } = params;
+        const { message, start, end, left, right, operator, expression } = params;
 
         if (operator !== undefined) {
             return {
@@ -80,14 +81,13 @@ export function parse(input: string): ExpressionNode {
             };
         }
 
-        if (operator === undefined && (left || right)) {
+        if (operator === undefined) {
             return {
                 type: 'Error',
                 message,
                 start,
                 end,
-                left,
-                right,
+                expression,
             };
         }
 
@@ -101,74 +101,10 @@ export function parse(input: string): ExpressionNode {
 
 
     function parseExpression(): ExpressionNode {
-        return parseOr();
+        return parseLogical();
     }
 
-    function parseOr(): ExpressionNode {
-        let left = parseAnd();
-
-        while (peek()) {
-            const nextToken = peek()!;
-
-            if (nextToken.type === 'NOT') {
-                const notToken = consume()!;
-                const right = parsePrimary();
-                return errorNode({
-                    message: 'NOT operator cant be after expression or condition',
-                    start: notToken.start,
-                    end: notToken.end,
-                    left: left,
-                    right: right,
-                    operator: nextToken.type
-                });
-            }
-
-            if (nextToken.type === 'OR') {
-                const operatorToken = consume()!;
-                const right = parseAnd();
-
-                if (right.type === 'Error' && right.message === 'Unexpected end of input') {
-                    return errorNode({
-                        message: 'Expected expression after logical operator',
-                        start: operatorToken.start,
-                        end: operatorToken.end,
-                        left: left,
-                        right: right,
-                        operator: nextToken.type
-                    });
-                }
-
-                left = {
-                    type: 'LogicalExpression',
-                    operator: 'OR',
-                    left,
-                    right,
-                    start: left.start,
-                    end: right.end,
-                };
-            } else if (
-                nextToken.type === 'KEY' ||
-                nextToken.type === 'VALUE' ||
-                nextToken.type === 'LPAREN'
-            ) {
-                const right = parseAnd();
-                return errorNode({
-                    message: 'Missing logical operator between expressions',
-                    start: left.end,
-                    end: nextToken.start,
-                    left: left,
-                    right: right
-                });
-            } else {
-                break;
-            }
-        }
-
-        return left;
-    }
-
-
-    function parseAnd(): ExpressionNode {
+    function parseLogical(): ExpressionNode {
         let left = parseNot();
 
         while (peek()) {
@@ -182,23 +118,23 @@ export function parse(input: string): ExpressionNode {
                     message: 'NOT operator cant be after expression or condition',
                     start: notToken.start,
                     end: notToken.end,
-                    left: left,
-                    right: right,
-                    operator: nextToken.type
+                    expression: right,
                 });
             }
 
             // Обработка логических операторов
-            if (nextToken.type === 'AND') {
+            if (nextToken.type === 'AND' || nextToken.type === 'OR') {
                 const operatorToken = consume()!;
                 const right = parseNot();
 
-                if (right.type === 'Error' && right.message === 'Unexpected end of input') {
+                if (right.type === 'Error' && right.message === 'Unexpected end of input' &&
+                    left.type === undefined
+                ) {
                     return errorNode({
                         message: 'Expected expression after logical operator',
                         start: operatorToken.start,
                         end: operatorToken.end,
-                        left: left,
+                        left: undefined,
                         right: right,
                         operator: nextToken.type
                     });
@@ -212,27 +148,33 @@ export function parse(input: string): ExpressionNode {
                     start: left.start,
                     end: right.end,
                 };
-            }
-            else if (
+            } else if (
                 nextToken.type === 'KEY' ||
                 nextToken.type === 'VALUE' ||
                 nextToken.type === 'LPAREN'
             ) {
+                if (nextToken.type === 'KEY' && tokens[pos + 1] && tokens[pos + 1].type !== 'EQ') {
+                    consume()
+                }
+
                 const right = parseNot()
                 return errorNode({
                     message: 'Missing logical operator between expressions',
+                    operator: null,
                     start: left.end,
                     end: nextToken.start,
                     left: left,
                     right: right
                 })
-            }
-            else {
+            } else {
                 break;
             }
         }
+
         return left;
     }
+
+
 
     function parseNot(): ExpressionNode {
         if (peek()?.type === 'NOT') {
@@ -261,17 +203,33 @@ export function parse(input: string): ExpressionNode {
         }
 
         if (token.type === 'LPAREN') {
-            const start = consume()!.start;
+            const curToken = consume()!;
             const expr = parseExpression();
             if (peek()?.type === 'RPAREN') {
                 const end = consume()!.end;
                 return {
                     type: 'Group',
                     expression: expr,
-                    start,
+                    start: curToken.start,
                     end,
                 };
+            } else {
+                return errorNode({
+                    message: 'Expected closing parenthesis',
+                    start: curToken.start,
+                    end: curToken.end,
+                    expression: expr
+                })
             }
+        }
+
+        if (token.type === 'RPAREN') {
+            const curToken = consume()!;
+            return errorNode({
+                message: 'Unexpected closing parenthesis',
+                start: curToken.start,
+                end: curToken.end
+            });
         }
 
         if (token.type === 'KEY') {
@@ -328,13 +286,11 @@ export function parse(input: string): ExpressionNode {
             }
         }
 
-        return {
-            type: 'Error',
-            message: 'unexpected',
+        return errorNode({
+            message: `Unexpected token: ${token.value}`,
             start: token.start,
             end: token.end
-        };
-
+        });
     }
 
     return parseExpression();

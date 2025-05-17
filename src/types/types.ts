@@ -1,4 +1,4 @@
-export type LogicalOperator = 'AND' | 'OR' | 'NOT';
+export type LogicalOperator = 'AND' | 'OR' | 'NOT' | null;
 
 export interface ASTNode {
     type: string;
