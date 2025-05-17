@@ -10,7 +10,7 @@ export interface Token {
 
 // Токенизация строки
 export function tokenize(input: string): Token[] {
-    const regex = /\s+|\b(?:AND|OR|NOT)\b|[()=]|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\w+/g;
+    const regex = /\s+|\b(?:AND|OR|NOT)\b|[()=]|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|“[^”]*”|‘[^’]*’|\w+/g;
     const tokens: Token[] = [];
 
     let match;
@@ -26,11 +26,19 @@ export function tokenize(input: string): Token[] {
         if (value === '(') type = 'LPAREN';
         else if (value === ')') type = 'RPAREN';
         else if (value === '=') type = 'EQ';
-        else if (/\bAND\b/i.test(value)) type = 'AND';
-        else if (/\bOR\b/i.test(value)) type = 'OR';
-        else if (/\bNOT\b/i.test(value)) type = 'NOT';
-        else if (/^["'].*["']$/.test(value)) type = 'VALUE';
-        else type = 'KEY';
+        else if (/^\bAND\b$/i.test(value)) type = 'AND';
+        else if (/^\bOR\b$/i.test(value)) type = 'OR';
+        else if (/^\bNOT\b$/i.test(value)) type = 'NOT';
+        else if (
+            /^"(?:\\.|[^"\\])*"$/.test(value) ||
+            /^'(?:\\.|[^'\\])*'$/.test(value) ||
+            /^“[^”]*”$/.test(value) ||
+            /^‘[^’]*’$/.test(value)
+        ) {
+            type = 'VALUE';
+        } else {
+            type = 'KEY';
+        }
 
         tokens.push({ type, value, start, end });
     }

@@ -13,14 +13,17 @@ export function parse(input: string): ExpressionNode {
     const tokens = tokenize(input);
     let pos = 0;
 
+    // Функция чтобы получить текущий токен
     function peek(): Token | undefined {
         return tokens[pos];
     }
 
+    // Функция чтобы получить текущий токен и после сдвинуть указатель вперед
     function consume(): Token | undefined {
         return tokens[pos++];
     }
 
+    // Функция создания ошибки
     function errorNode(params: {
         message: string;
         start: number;
@@ -37,24 +40,28 @@ export function parse(input: string): ExpressionNode {
     }
 
 
+    // Функция для парсинга выражения 
     function parseExpression(): ExpressionNode {
-        return parseLogical();
+        return parseOr();
     }
 
-    function parseLogical(): ExpressionNode {
-        let left = parseNot();
+    // Функция для парсинга логического выражения с OR
+    function parseOr(): ExpressionNode {
+        let left = parseAnd();
+
+        if (left.type === 'Error') return left;
 
         while (peek()) {
             const nextToken = peek()!;
 
             // Обработка логических операторов
-            if (nextToken.type === 'AND' || nextToken.type === 'OR') {
+            if (nextToken.type === 'OR') {
                 const operatorToken = consume()!;
-                const right = parseNot();
+                const right = parseAnd();
 
                 if (right.type === 'Error' && right.message === 'Unexpected end of input') {
                     return errorNode({
-                        message: 'Expected expression or condition after logicaloperator',
+                        message: 'Expected expression or condition after OR',
                         start: operatorToken.start,
                         end: operatorToken.end
                     })
@@ -68,12 +75,23 @@ export function parse(input: string): ExpressionNode {
                     start: left.start,
                     end: right.end,
                 };
-            } else if (nextToken.type ==='NOT' ) {
+            } else if (nextToken.type === 'NOT') {
                 const operatorToken = consume()!
                 return errorNode({
                     message: 'Not cant be after expression or condition',
                     start: operatorToken.start,
                     end: operatorToken.end
+                })
+            } else if (
+                nextToken.type === 'KEY' ||
+                nextToken.type === 'VALUE' ||
+                nextToken.type === 'LPAREN'
+            ) {
+                const curToken = consume()!;
+                return errorNode({
+                    message: 'Expected logical operator between two expressions or conditions',
+                    start: left.end,
+                    end: curToken.start,
                 })
             } else {
                 break;
@@ -83,13 +101,66 @@ export function parse(input: string): ExpressionNode {
         return left;
     }
 
+    // Функция для парсинга логического выражения с AND
+    function parseAnd(): ExpressionNode {
+        let left = parseNot();
 
+        if (left.type === 'Error') return left;
 
+        while (peek()) {
+            const nextToken = peek()!;
+
+            // Обработка логических операторов
+            if (nextToken.type === 'AND') {
+                const operatorToken = consume()!;
+                const right = parseNot();
+
+                if (right.type === 'Error' && right.message === 'Unexpected end of input') {
+                    return errorNode({
+                        message: 'Expected expression or condition after AND',
+                        start: operatorToken.start,
+                        end: operatorToken.end
+                    })
+                }
+
+                left = {
+                    type: 'LogicalExpression',
+                    operator: operatorToken.value.toUpperCase() as LogicalOperator,
+                    left,
+                    right,
+                    start: left.start,
+                    end: right.end,
+                };
+            } else if (nextToken.type === 'NOT') {
+                const operatorToken = consume()!
+                return errorNode({
+                    message: 'Not cant be after expression or condition',
+                    start: operatorToken.start,
+                    end: operatorToken.end
+                })
+            } else if (
+                nextToken.type === 'KEY' ||
+                nextToken.type === 'VALUE' ||
+                nextToken.type === 'LPAREN'
+            ) {
+                const curToken = consume()!;
+                return errorNode({
+                    message: 'Expected logical operator between two expressions or conditions',
+                    start: left.end,
+                    end: curToken.start,
+                })
+            } else {
+                break;
+            }
+        }
+        return left;
+    }
+
+    // Функция для парсинга выражения с NOT
     function parseNot(): ExpressionNode {
         if (peek()?.type === 'NOT') {
             const notToken = consume()!;
             const expr = parsePrimary();
-
             return {
                 type: 'NotExpression',
                 expression: expr,
@@ -99,7 +170,7 @@ export function parse(input: string): ExpressionNode {
         }
         return parsePrimary();
     }
-
+    // Функция для парсинга выражения
     function parsePrimary(): ExpressionNode {
         const token = peek();
 
@@ -132,8 +203,13 @@ export function parse(input: string): ExpressionNode {
                     end,
                 };
             }
+            return errorNode({
+                message: 'Expected closing parenthesis )',
+                start: curToken.start,
+                end: expr.end
+            });
         }
-
+        
         if (token.type === 'KEY') {
             const key = consume()!;
             if (peek()?.type === 'EQ') {
@@ -150,7 +226,6 @@ export function parse(input: string): ExpressionNode {
                             end: value.end
                         })
                     }
-
                     return {
                         type: 'Condition',
                         key: key.value,
@@ -181,13 +256,11 @@ export function parse(input: string): ExpressionNode {
                 end: value.end
             }
         }
-
         return errorNode({
             message: `Unexpected token: ${token.value}`,
             start: token.start,
             end: token.end
         });
     }
-
     return parseExpression();
 }
