@@ -4,45 +4,8 @@ import type {
     ErrorNode,
 } from '../types/types';
 
-// Типы токенов
-type TokenType = 'KEY' | 'EQ' | 'VALUE' | 'AND' | 'OR' | 'NOT' | 'LPAREN' | 'RPAREN';
+import { tokenize, type Token } from './tokenize';
 
-interface Token {
-    type: TokenType;
-    value: string;
-    start: number;
-    end: number;
-}
-
-// Токенизация строки
-function tokenize(input: string): Token[] {
-    const regex = /\s+|\b(?:AND|OR|NOT)\b|[()=]|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\w+/g;
-    const tokens: Token[] = [];
-
-    let match;
-    while ((match = regex.exec(input)) !== null) {
-        const value = match[0];
-        const start = match.index;
-        const end = start + value.length;
-
-        if (/^\s+$/.test(value)) continue;
-
-        let type: TokenType;
-
-        if (value === '(') type = 'LPAREN';
-        else if (value === ')') type = 'RPAREN';
-        else if (value === '=') type = 'EQ';
-        else if (/\bAND\b/i.test(value)) type = 'AND';
-        else if (/\bOR\b/i.test(value)) type = 'OR';
-        else if (/\bNOT\b/i.test(value)) type = 'NOT';
-        else if (/^["'].*["']$/.test(value)) type = 'VALUE';
-        else type = 'KEY';
-
-        tokens.push({ type, value, start, end });
-    }
-    console.log(tokens)
-    return tokens;
-}
 
 // Главная функция разбора
 export function parse(input: string): ExpressionNode {
@@ -62,34 +25,8 @@ export function parse(input: string): ExpressionNode {
         message: string;
         start: number;
         end: number;
-        left?: ExpressionNode;
-        right?: ExpressionNode;
-        operator?: LogicalOperator;
-        expression?: ExpressionNode;
     }): ErrorNode {
-        const { message, start, end, left, right, operator, expression } = params;
-
-        if (operator !== undefined) {
-            return {
-                type: 'Error',
-                message,
-                start,
-                end,
-                left,
-                right,
-                operator,
-            };
-        }
-
-        if (operator === undefined) {
-            return {
-                type: 'Error',
-                message,
-                start,
-                end,
-                expression,
-            };
-        }
+        const { message, start, end } = params;
 
         return {
             type: 'Error',
@@ -110,34 +47,17 @@ export function parse(input: string): ExpressionNode {
         while (peek()) {
             const nextToken = peek()!;
 
-            // Проверка на допустимость позиции NOT
-            if (nextToken.type === 'NOT') {
-                const notToken = consume()!;
-                const right = parsePrimary();
-                return errorNode({
-                    message: 'NOT operator cant be after expression or condition',
-                    start: notToken.start,
-                    end: notToken.end,
-                    expression: right,
-                });
-            }
-
             // Обработка логических операторов
             if (nextToken.type === 'AND' || nextToken.type === 'OR') {
                 const operatorToken = consume()!;
                 const right = parseNot();
 
-                if (right.type === 'Error' && right.message === 'Unexpected end of input' &&
-                    left.type === undefined
-                ) {
+                if (right.type === 'Error' && right.message === 'Unexpected end of input') {
                     return errorNode({
-                        message: 'Expected expression after logical operator',
+                        message: 'Expected expression or condition after logicaloperator',
                         start: operatorToken.start,
-                        end: operatorToken.end,
-                        left: undefined,
-                        right: right,
-                        operator: nextToken.type
-                    });
+                        end: operatorToken.end
+                    })
                 }
 
                 left = {
@@ -148,23 +68,12 @@ export function parse(input: string): ExpressionNode {
                     start: left.start,
                     end: right.end,
                 };
-            } else if (
-                nextToken.type === 'KEY' ||
-                nextToken.type === 'VALUE' ||
-                nextToken.type === 'LPAREN'
-            ) {
-                if (nextToken.type === 'KEY' && tokens[pos + 1] && tokens[pos + 1].type !== 'EQ') {
-                    consume()
-                }
-
-                const right = parseNot()
+            } else if (nextToken.type ==='NOT' ) {
+                const operatorToken = consume()!
                 return errorNode({
-                    message: 'Missing logical operator between expressions',
-                    operator: null,
-                    start: left.end,
-                    end: nextToken.start,
-                    left: left,
-                    right: right
+                    message: 'Not cant be after expression or condition',
+                    start: operatorToken.start,
+                    end: operatorToken.end
                 })
             } else {
                 break;
@@ -202,6 +111,15 @@ export function parse(input: string): ExpressionNode {
             });
         }
 
+        if (token.type === 'AND' || token.type === 'OR') {
+            const curToken = consume()!
+            return errorNode({
+                message: 'Expected expression or condition before logical opeartor',
+                start: curToken.start,
+                end: curToken.end
+            })
+        }
+
         if (token.type === 'LPAREN') {
             const curToken = consume()!;
             const expr = parseExpression();
@@ -213,23 +131,7 @@ export function parse(input: string): ExpressionNode {
                     start: curToken.start,
                     end,
                 };
-            } else {
-                return errorNode({
-                    message: 'Expected closing parenthesis',
-                    start: curToken.start,
-                    end: curToken.end,
-                    expression: expr
-                })
             }
-        }
-
-        if (token.type === 'RPAREN') {
-            const curToken = consume()!;
-            return errorNode({
-                message: 'Unexpected closing parenthesis',
-                start: curToken.start,
-                end: curToken.end
-            });
         }
 
         if (token.type === 'KEY') {
@@ -256,12 +158,6 @@ export function parse(input: string): ExpressionNode {
                         start: key.start,
                         end: value.end,
                     };
-                } else {
-                    return errorNode({
-                        message: 'Expected value after =',
-                        start: key.start,
-                        end: key.end
-                    });
                 }
             }
         }
